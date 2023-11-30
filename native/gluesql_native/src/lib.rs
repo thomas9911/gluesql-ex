@@ -31,7 +31,7 @@ fn new_memory_db() -> MemoryDb {
 
 #[rustler::nif]
 fn execute_memory_db<'a>(
-    _env: Env<'a>,
+    env: Env<'a>,
     db: MemoryDb,
     stmt: String,
     send_to: LocalPid,
@@ -44,20 +44,18 @@ fn execute_memory_db<'a>(
             let mut glue = Glue::new(asdf);
             let db_result = glue.execute(stmt).await;
 
-            OwnedEnv::new().send_and_clear(&send_to, |thread_env| {
-                match db_result {
-                    Ok(result_set) => {
-                        let formatted: Vec<_> = result_set
-                            .into_iter()
-                            .map(|res| payload_to_term(thread_env, res))
-                            .collect();
-                        let message = formatted.encode(thread_env);
-                        message
-                    }
-                    Err(e) => {
-                        let message = thread_env.error_tuple(format!("{:?}", e));
-                        message
-                    }
+            OwnedEnv::new().send_and_clear(&send_to, |thread_env| match db_result {
+                Ok(result_set) => {
+                    let formatted: Vec<_> = result_set
+                        .into_iter()
+                        .map(|res| payload_to_term(thread_env, res))
+                        .collect();
+                    let message = formatted.encode(thread_env);
+                    message
+                }
+                Err(e) => {
+                    let message = thread_env.error_tuple(format!("{:?}", e));
+                    message
                 }
             });
         })

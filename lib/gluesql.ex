@@ -3,21 +3,22 @@ defmodule Gluesql do
   Documentation for `Gluesql`.
   """
 
+  @default_timeout 5000
+
   defdelegate new_memory_db(), to: Gluesql.Native
 
-  def execute_memory_db(db, stmt) do
+  def execute_memory_db(db, stmt, timeout \\ @default_timeout) do
     case Gluesql.Native.execute_memory_db(db, stmt, self()) do
       {:ok, _} ->
         receive do
           x ->
             x
-
-          after
-            5000 -> {:error, :timeout}
+        after
+          timeout -> {:error, :timeout}
         end
 
-
-      other -> other
+      other ->
+        other
     end
   end
 end
